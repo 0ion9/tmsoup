@@ -11,7 +11,7 @@ class KeyExists(Exception):
         self.name = name
 
     def __str__(self):
-        return '%s : a %s named %s already exists.' %
+        return '%s : a %s named %s already exists.' %\
         (self.__class__.__name__, self.keyclass, self.name)
 
 
