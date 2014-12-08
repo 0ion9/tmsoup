@@ -26,7 +26,7 @@ Features
   * Quicker tagging : `fruit_salad` -> `apple banana orange`
   * Easier tagging : `music` -> `𝅘𝅥𝅮`
   * Tag=value shorthand : `2014` -> `year=2014`
-  * Modify or simplify imported taggings : `soft rock`, `hard rock`, `progressive_rock` -> `rock`
+  * Modify or simplify taggings as you import them : `soft rock`, `hard rock`, `progressive_rock` -> `rock`
 
  * For now, the easiest way to use the CLI is:
   * Install tmsoup, via `python3 setup.py install`

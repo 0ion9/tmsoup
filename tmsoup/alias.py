@@ -355,9 +355,9 @@ def delete_alias(cursor, name):
         raise KeyError('Tried to remove alias %r, but'
                        ' no such alias exists!' % name)
 
-    alias_id = alias_id(c, name)
-    c.execute('delete from alias_tag where alias_id = ?', (alias_id,))
-    c.execute('delete from alias where id = ?', (alias_id,))
+    _alias_id = alias_id(c, name)
+    c.execute('delete from alias_tag where alias_id = ?', (_alias_id,))
+    c.execute('delete from alias where id = ?', (_alias_id,))
     c.connection.commit()
 
 
@@ -396,7 +396,8 @@ def parse_args(args):
     add.add_argument('aliasname', type=str)
     add.add_argument('tagname', type=str, nargs='+')
 
-    rm = subp.add_parser('remove', help='Remove an alias')
+    rm = subp.add_parser('remove', help='Remove an alias',
+                         aliases=('rm',))
     rm.add_argument('aliasname', type=str, nargs='+')
 
     madd = subp.add_parser('multi_add',
@@ -499,7 +500,7 @@ def main(arguments):
         alias_away(cursor, args.oldname, args.newname)
     elif c in ('remove', 'rm'):
         for name in args.aliasname:
-            remove_alias(cursor, name)
+            delete_alias(cursor, name)
     elif c == 'unknown':
         items = unknown_symbols(cursor, args.symbol)
         print(" ".join(sorted(items)))
