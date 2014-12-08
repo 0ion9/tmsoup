@@ -22,7 +22,6 @@ Features
 
 * alias : API and CLI extending TMSU with aliases.
           An alias maps a name to one or more taggings.
-          
  * Example aliasing uses :
   * Quicker tagging : `fruit_salad` -> `apple banana orange`
   * Easier tagging : `music` -> `𝅘𝅥𝅮`
