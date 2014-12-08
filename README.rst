@@ -28,5 +28,9 @@ Features
   * Tag=value shorthand : `2014` -> `year=2014`
   * Modify or simplify imported taggings : `soft rock`, `hard rock`, `progressive_rock` -> `rock`
 
+ * For now, the easiest way to use the CLI is:
+  * Install tmsoup, via `python3 setup.py install`
+  * Create a shell alias 'talias' as follows: `alias talias='python -m tmsoup.alias'`
+  * Use the alias.
 
 * TODO
