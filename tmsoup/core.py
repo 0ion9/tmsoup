@@ -108,8 +108,7 @@ def tag_values(cursor):
 def tag_id_map(cursor):
     "Return a dictionary mapping tag name to id,"
     " for all tag names defined by this database"
-    return dict(v[0] for v in cursor.execute('SELECT name, id'
-                                             ' FROM tag').fetchall())
+    return dict(cursor.execute('SELECT name, id FROM tag'))
 
 
 def id_tag_map(cursor):
