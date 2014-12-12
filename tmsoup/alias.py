@@ -134,6 +134,14 @@ def describe_aliases(cursor):
 def list_aliases(cursor, alias_filter=None, tag_filter=None, oneline=False):
     "Display a list of 'alias > tagging' mappings,"
     " optionally filtered by glob patterns."
+    # XXX collapse aliases with matching RHS,
+    # eg.
+    #
+    # foo -> bar
+    # fool -> bar
+    # >>>>
+    # foo, fool -> bar
+    #
 
     import fnmatch
     descriptions = describe_aliases(cursor)

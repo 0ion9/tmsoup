@@ -8,7 +8,7 @@ whether to expand docstring support to encompass tag groups as well.
 shelling-out to tmsu reduced to a minimum.
 
 * Other tmsu-related tools and affordances, like:
-  * sxiv keyhandler snippets related to tagging
+  * sxiv keyhandler snippets related to tagging (repeat last tagging, tagging 'quickslots', etc)
   * Thunar custom action for tagging
   * (yet to be written) Thunar select-by-tag-query plugin (eg files with specific tag, files with >N tags ..).
     Limited to (non-recursive) contents of the current directory, for usability purposes
@@ -20,6 +20,7 @@ shelling-out to tmsu reduced to a minimum.
   * Extended querying and filtering of an existing fileset (tagfilt)
   * tmsq -- query result cacher
   * waitfortmsu -- wait until the lock on the TMSU database is released. For use before an operation that needs to write to the DB -- eg tmsu tag.
+  * tumbltags -- copy the tmsu tags of one or more files to X clipboard, in a format suitable for pasting into XKit for Tumblr's 'quick tags' widget.
   * These all exist already in some form, though they need polish.
 
   (although I may end up putting these in a separate repository)
