@@ -263,6 +263,9 @@ def file_info(path):
     """
     return os.path.split(os.path.abspath(path))
 
+def file_mtime(path):
+    """Return the file's mtime, in a string format suitable for storing in the file table."""
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(path)))
 
 def file_id(cursor, path):
     """Return the file.id of the given path.
