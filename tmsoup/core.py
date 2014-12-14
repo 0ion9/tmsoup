@@ -248,6 +248,16 @@ def delete_tag(cursor, name):
     delete(cursor, 'tag', name)
     dispatch_hook('after-tag-delete')
 
+def resolve_tag_value(cursor, tagid, valueid):
+    if valueid == 0:
+        return cursor.execute('SELECT name FROM tag WHERE id = ?',
+                              (tagid,)).fetchone()[0]
+    else:
+        tmp = cursor.execute('SELECT T.name,V.name FROM tag AS T,'
+                             ' value AS V where T.id=? and V.id=?',
+                             (tagid, valueid)).fetchall()[0]
+        return '%s=%s' % tmp
+
 
 def file_info(path):
     """Given a path to a file, return a (dirname, file) tuple
@@ -281,17 +291,27 @@ def file_id(cursor, path):
         return results[0][0]
     return None
 
+def file_ids(cursor, paths):
+    """Return a path: file.id map for the given paths."""
+    # XXX is slow?
+    return {p: file_id(cursor, p) for p in paths}
+
 
 def file_tags(cursor, paths):
-    """Return path,  tags tuples for each of the specified paths.
+    """Return path,  tags tuples for each of the specified paths/ids.
 
     """
     # XXX could be faster -- query all paths in one go
     id_path_map = {file_id(cursor, p): p for p in paths}
     map = {}
     cursor.execute('CREATE TEMPORARY TABLE fileidtmp(id INTEGER)')
-    idlist = ",".join(['(%d)' % v for v in sorted(id_path_map.keys())])
-    cursor.execute('INSERT INTO fileidtmp VALUES %s' % idlist)
+    idlist = sorted(id_path_map.keys())
+
+    for start in range(0, len(idlist) + 1, 499):
+        tmp = idlist[start:start+499]
+        if tmp:
+            cursor.execute('INSERT INTO fileidtmp VALUES {}'.format(
+                ", ".join("(%d)" % v for v in tmp)))
     for fid, tid, vid in cursor.execute('SELECT F.file_id,'
                              ' F.tag_id,'
                              ' F.value_id'
@@ -388,8 +408,14 @@ def delete_file_taggings(cursor, file_id):
 # useful for turning a path into a dirname, basename tuple.
 splitpath = os.path.split
 
+def _add_database_option(parser):
+    parser.add_argument('-D', '--database', default=None, type=str,
+                        help='Use the specified database.')
+
+
 __all__ = ('validate_name', 'get_db_path', 'tag_names', 'tag_values',
            'tag_id_map', 'id_tag_map', 'rename_tag', 'delete_tag',
            'register_hook', 'dispatch_hook', 'KeyExists', 'file_id',
-           'file_tags', 'tag_files', 'untag_files', 'delete_file_tag',
-           'delete_file_taggings', 'splitpath')
+           'file_ids', 'file_tags', 'tag_files', 'untag_files',
+           'delete_file_tag',
+           'delete_file_taggings', 'splitpath', 'resolve_tag_value')

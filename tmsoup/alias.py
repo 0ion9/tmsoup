@@ -7,7 +7,7 @@ import sys
 import argparse
 from .core import (get_db_path, validate_name,
                    tag_names, rename_tag,
-                   KeyExists, tag_id, register_hook)
+                   KeyExists, tag_id, register_hook, resolve_tag_value)
 
 _DB_PATH = get_db_path()
 _autoremoved_aliases = {}
@@ -57,17 +57,6 @@ def alias_names(cursor):
 
 def alias_id_map(cursor):
     return dict(cursor.execute('select name, id from alias'))
-
-
-def resolve_tag_value(cursor, tagid, valueid):
-    if valueid == 0:
-        return cursor.execute('SELECT name FROM tag WHERE id = ?',
-                              (tagid,)).fetchone()[0]
-    else:
-        tmp = cursor.execute('SELECT T.name,V.name FROM tag AS T,'
-                             ' value AS V where T.id=? and V.id=?',
-                             (tagid, valueid)).fetchall()[0]
-        return '%s=%s' % tmp
 
 
 def resolve_aliases(cursor, items):
