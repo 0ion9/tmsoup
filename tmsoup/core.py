@@ -131,6 +131,8 @@ def rename(cursor, tablename, oldname, newname):
 
     True if the rename succeeded.
     """
+    if newname == '':
+        raise ValueError('New name cannot be empty')
     if not any(cursor.execute('select name from ' +
                               tablename + ' where name = ?',
                               (oldname,))):
@@ -162,8 +164,8 @@ def delete(cursor, tablename, name):
 
     Returns
     ========
-
     True if the removal succeeded (ie. exactly one row was removed.)
+
     """
     if not any(cursor.execute('select name from ' + tablename +
                               ' where name = ?',
@@ -202,7 +204,10 @@ def create_tag(cursor, name, reuse_old=False):
     Using reuse_old=True obfuscates implicit information about the order
     in which tags have been created. If you want to use that information,
     avoid using this option.
+
     """
+    if not name:
+        raise ValueError('Tag name cannot be empty.')
     if len(list(
         cursor.execute('select id from tag where name = ?', (name,)))):
         raise ValueError('Tag name %r is already in use' % name)
@@ -232,6 +237,8 @@ def create_tag(cursor, name, reuse_old=False):
 
 
 def rename_tag(cursor, oldname, newname):
+    """Rename tag from oldname to newname.
+    """
     return rename(cursor, 'tag', oldname, newname)
 
 
