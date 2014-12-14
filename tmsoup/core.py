@@ -299,9 +299,11 @@ def file_tags(cursor, paths):
     return map
 
 
-def tag_file(cursor, fids, taggings):
+
+def tag_files(cursor, fids, taggings):
     """Tag each of the specified files (must already be known to TMSU)
     with the given taggings -- (tag_id, value_id) pairs.
+
     """
     all_values = []
     for fid in fids:
@@ -312,7 +314,79 @@ def tag_file(cursor, fids, taggings):
         ' values %s' % all_values)
     cursor.connection.commit()
 
+def untag_files(cursor, fids, taggings):
+    """Remove tags from each of the specified files
+
+    Raises
+    =======
+    IOError      When the number of effected rows > (len(fids) * len(taggings))
+    ValueError   When the input is invalid
+
+    """
+
+    if any(type(v) != int for v in fids):
+        raise ValueError('All file ids must be integers, not [' +
+            ("".join(str(type(v)) for v in fids if type(v) != int)) + "]")
+
+    if any(len(v) != 2 for v in taggings):
+        raise ValueError('All taggings must be 2-tuples (tagid, valueid),'
+            ' not %r' % ([v for v in taggings if len(v) != 2],))
+
+    cursor.execute('CREATE TEMPORARY TABLE fileidtmp(id INTEGER)')
+    idlist = ",".join(['(%d)' % v for v in fids])
+    cursor.execute('INSERT INTO fileidtmp VALUES %s' % idlist)
+    max_affected = len(fids) * len(taggings)
+    # XXX this is not as well error-checked as TMSU's code
+    # (storage/database/filetag.go:DeleteFileTag())
+    cursor.commit()
+    total_affected = 0
+    for params in taggings:
+        cursor.execute('DELETE FROM file_tag'
+            ' WHERE file_id IN (select * from fileidtmp)'
+            ' AND tag_id = ? AND value_id = ?)', params)
+        if cursor.rowcount > max_affected:
+            cursor.rollback()
+            raise IOError('Too many rows (%d > max %d) affected'
+                ' by deletion' % (cursor.rowcount, max_affected))
+        total_affected += cursor.rowcount
+    cursor.execute('DROP TABLE fileidtmp')
+    cursor.connection.commit()
+    return total_affected
+
+
+def delete_file_tag(cursor, tag_id):
+    """Delete all usages of the given tag from the file_tag table.
+
+    Normally used just prior to deleting the record of the tag from the tag
+    table.
+
+    Returns
+    ========
+    The number of affected rows
+    """
+    cursor.execute('DELETE FROM file_tag WHERE tag_id = ?')
+    r = cursor.rowcount
+    cursor.commit()
+    return r
+
+
+def delete_file_taggings(cursor, file_id):
+    """Delete all taggings relating to a specific file_id
+
+    Returns
+    ========
+    The number of affected rows (number of taggings removed)
+    """
+    cursor.execute('DELETE FROM file_tag WHERE file_id = ?', (file_id,))
+    r = cursor.rowcount
+    cursor.commit()
+    return r
+
+# useful for turning a path into a dirname, basename tuple.
+splitpath = os.path.split
 
 __all__ = ('validate_name', 'get_db_path', 'tag_names', 'tag_values',
            'tag_id_map', 'id_tag_map', 'rename_tag', 'delete_tag',
-           'register_hook', 'dispatch_hook', 'KeyExists')
+           'register_hook', 'dispatch_hook', 'KeyExists', 'file_id',
+           'file_tags', 'tag_files', 'untag_files', 'delete_file_tag',
+           'delete_file_taggings')
