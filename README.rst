@@ -15,7 +15,7 @@ Tmsoup
 Python extensions and enhancements to TMSU
 
 * Free software: LGPLv3 license
-* Documentation: https://tmsoup.readthedocs.org.
+* Documentation: https://tmsoup.readthedocs.org... When I set it up.
 
 Features
 --------
@@ -30,7 +30,7 @@ Features
 
  * For now, the easiest way to use the CLI is:
   * Install tmsoup, via `python3 setup.py install`
-  * Create a shell alias 'talias' as follows: `alias talias='python -m tmsoup.alias'`
+  * Create a shell alias 'talias' as follows: `alias talias='python3 -m tmsoup.alias'`
   * Use the alias.
 
 * TODO
