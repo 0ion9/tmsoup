@@ -1,6 +1,7 @@
 import os
 import time
 
+
 def delete_file_taggings(cursor, file_id):
     """Delete all taggings relating to a specific file_id
 
@@ -30,8 +31,15 @@ def file_info(path):
 
 
 def file_mtime(path):
-    """Return the file's mtime, in a string format suitable for storing in the file table."""
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(path)))
+    """Return the file's mtime, as a string suitable for storing in the database.
+    We cannot return a datetime object, because datetimes
+    do not support nanosecond resolution.
+
+    """
+    base = os.stat(path)
+    t = time.gmtime(base.st_mtime)
+    nano = base.st_mtime_ns % 1000000000
+    return time.strftime('%Y-%m-%d %H:%M:%S.' + str(nano), t)
 
 
 def file_id(cursor, path):
