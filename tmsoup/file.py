@@ -35,11 +35,21 @@ def file_mtime(path):
     We cannot return a datetime object, because datetimes
     do not support nanosecond resolution.
 
+    Trailing zeros are truncated, to match TMSU's implementation.
+    If nanoseconds == 0, the decimal part is omitted entirely.
     """
     base = os.stat(path)
     t = time.gmtime(base.st_mtime)
     nano = base.st_mtime_ns % 1000000000
-    return time.strftime('%Y-%m-%d %H:%M:%S.' + str(nano), t)
+    if nano > 0:
+        nano = str(nano)
+        while nano[-1] == '0':
+            nano = nano[:-1]
+        nano = '.' + nano
+    else:
+        nano = ''
+
+    return time.strftime('%Y-%m-%d %H:%M:%S' + nano, t)
 
 
 def file_id(cursor, path):
