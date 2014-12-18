@@ -1,3 +1,8 @@
+_RESERVEDNAMES = set('. .. and or not eq ne lt gt le ge'.split(' '))
+_RESERVEDNAMES.update({v.upper() for v in _RESERVEDNAMES})
+
+defer_commit = False
+
 def validate_name(name):
     """Return if a name is valid per TMSU rules.
 
@@ -61,7 +66,7 @@ def rename(cursor, tablename, oldname, newname):
 
     conn = cursor.connection
     oldchanges = conn.total_changes
-    conn.commit()
+    do_commit(cursor)
     cursor.execute('UPDATE ' + tablename +
                    'SET name = ? where name = ?',
                    (newname, oldname))
@@ -70,7 +75,7 @@ def rename(cursor, tablename, oldname, newname):
         conn.rollback()
         return False
 
-    conn.commit()
+    do_commit(cursor)
     return True
 
 
@@ -90,14 +95,26 @@ def delete(cursor, tablename, name):
 
     conn = cursor.connection
     oldchanges = conn.total_changes
-    conn.commit()
+    do_commit(cursor)
     cursor.execute('DELETE FROM ' + tablename +
                    ' where name = ?',
                    (newname, oldname))
 
+    # XXX rollback vs commit asymmetry..
     if conn.changes - oldchanges != 1:
         conn.rollback()
         return False
 
-    conn.commit()
+    do_commit(cursor)
     return True
+
+
+def do_commit(cursor):
+    if defer_commit:
+        # don't commit yet, we are running in CLI automation mode
+        import sys
+        sys.stderr.write('.')
+        return
+    else:
+        conn = cursor.connection
+        conn.commit()

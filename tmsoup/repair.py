@@ -8,6 +8,7 @@ from .core import (splitpath, KeyExists,
 from .fingerprint import (set_fingerprint_algorithm,
                           get_fingerprint_algorithm,
                           fingerprint)
+from .util import do_commit
 
 INVALID_SIZE = -1
 
@@ -183,6 +184,7 @@ def repair_path(cursor, oldpath, newpath, ignore_fingerprint=False):
                          ' of new path {}'.format(fp, new_fp, newpath))
     cursor.execute('UPDATE file SET directory = ?, name = ? WHERE id = ?',
         (ndirname, nbasename, id))
+    do_commit(cursor)
 
     assert (type(fp) == str)
 
@@ -195,6 +197,7 @@ def merge_files(cursor, main_file_id, *dupes):
     """
     pass
 
+
 def change_fingerprint_algorithm(cursor, algorithm):
     """Change the configured fingerprint algorithm, and invalidate existing fingerprints."""
     try:
@@ -202,7 +205,7 @@ def change_fingerprint_algorithm(cursor, algorithm):
     except ValueError:
         cursor.connection.rollback()
     cursor.execute('UPDATE file SET size = -1')
-    cursor.connection.commit()
+    do_commit(cursor)
 
 
 def _msg(*args,**kwargs):
@@ -328,6 +331,7 @@ def update_file_metadata(cursor, paths):
     print('\n'.join('%s %s %s' % (v[0], v[1], k) for k,v in updated.items()))
     print('Records differed for:')
     print('\n'.join(k for k, v in updated.items() if v != old_info[k]))
+
 
 def _interactive_duplicate_removal(cursor, command, limit, minimum=2):
     from itertools import chain
@@ -513,7 +517,7 @@ def parse_args(args):
     return args
 
 
-def main(argv):
+def main(argv, cursor=None):
     from plumbum.cmd import which
     import sqlite3
 
@@ -522,6 +526,8 @@ def main(argv):
         sys.exit(1)
 
     args = parse_args(argv)
+    if not cursor:
+        cursor = sqlite3.connect(args.database).cursor()
 
     if args.cmd == 'dupes':
 
@@ -532,17 +538,15 @@ def main(argv):
             if not os.path.exists(executable):
                 explode('Command {} not found'.format(executable))
 
-            conn = sqlite3.connect(args.database)
-            _interactive_duplicate_removal(conn.cursor(),
+            _interactive_duplicate_removal(cursor(),
                 args.command,
                 args.limit,
                 args.minimum)
     elif args.cmd == 'update':
-        conn = sqlite3.connect(args.database)
-        update_file_metadata(conn.cursor(), args.files)
+        update_file_metadata(cursor, args.files)
     elif args.cmd == 'check':
-        conn = sqlite3.connect(args.database)
-        data = changed_paths(conn.cursor())
+
+        data = changed_paths(cursor)
         summarystream = sys.stdout
         if args.json:
             import json
@@ -550,6 +554,7 @@ def main(argv):
             summarystream = sys.stderr
         for k, v in sorted(data.items(), key=lambda i:i[0]):
             print('%-10s : %6d' % (k.title(),len(v)), file=summarystream)
+
 
 if __name__ == '__main__':
     import sys

@@ -125,24 +125,24 @@ def parse_file(file):
     
     shared_argument
     shared_argument[...]
-    NULL
+    BLANK LINE
     argument
     argument[...]
-    NULL_OR_EOF
+    BLANK_LINE_OR_EOF
     
-    An example might be (with NULL in place of actual nulls,
+    An example might be (with BL in place of blank lines,
     and EOF for EOF)
     
     -D=/home/me/.my.db
-    NULL
+    BL
     tag
     mysong.mp3
     metal
-    NULL
+    BL
     tag
-    --tags="apple banana orange iguana"
+    --tags=apple banana orange iguana
     mypicture.jpg
-    NULL
+    BL
     stats
     EOF
     

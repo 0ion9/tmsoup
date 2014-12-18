@@ -1,6 +1,6 @@
 import os
 import time
-
+from .util import do_commit
 
 def delete_file_taggings(cursor, file_id):
     """Delete all taggings relating to a specific file_id
@@ -11,7 +11,7 @@ def delete_file_taggings(cursor, file_id):
     """
     cursor.execute('DELETE FROM file_tag WHERE file_id = ?', (file_id,))
     r = cursor.rowcount
-    cursor.commit()
+    do_commit(cursor)
     return r
 
 

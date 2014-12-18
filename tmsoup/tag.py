@@ -1,4 +1,4 @@
-from .util import delete, rename
+from .util import delete, rename, do_commit
 
 def tag_names(cursor):
     """Return a list of all tag names defined in this database"""
@@ -80,14 +80,14 @@ def create_tag(cursor, name, reuse_old=False):
             raise ValueError('Everyone out of the universe!')
         id = min(available)
         cursor.execute('insert into tag(id, name) values (?,?)', (id, name))
-        cursor.connection.commit()
+        do_commit(cursor)
         actualid = cursor.execute('select id from tag where name = ?',
                        (name,)).fetchone()[0][0]
         if actualid != id:
             raise ValueError('Asked for unused id %r, but got %r' % (id, actualid))
     else:
         cursor.execute('insert into tag(name) values (?)', (name,))
-        cursor.connection.commit()
+        do_commit(cursor)
         id = cursor.execute('select id from tag where name = ?',
                  (name,)).fetchone()[0][0]
     return id

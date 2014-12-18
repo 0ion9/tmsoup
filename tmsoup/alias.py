@@ -8,6 +8,7 @@ import argparse
 from .core import (get_db_path, validate_name,
                    tag_names, rename_tag,
                    KeyExists, tag_id, register_hook, resolve_tag_value)
+from .util import do_commit
 
 _DB_PATH = get_db_path()
 _autoremoved_aliases = {}
@@ -218,12 +219,11 @@ def add_alias(cursor, name, tags):
     except Exception as e:
         print(e)
         raise
-    conn = cursor.connection
     c = cursor
     msg(name, ':', pairs)
 
     c.execute('insert into alias(name) values (?)', (name,))
-    conn.commit()
+    do_commit(cursor)
     new_alias_id = alias_id(c, name)
     msg('new alias id: %r' % new_alias_id)
 
@@ -231,7 +231,7 @@ def add_alias(cursor, name, tags):
         c.execute('insert into alias_tag (alias_id, tag_id, value_id)'
                   ' values (?, ?, ?)', (new_alias_id, tag_id, value_id))
 
-    conn.commit()
+    do_commit(cursor)
 
 
 def check_aliases():
@@ -343,7 +343,7 @@ def rename_alias(cursor, oldname, newname):
     validate_name(oldname)
     validate_name(newname)
     rename(cursor, 'alias', oldname, newname)
-    cursor.connection.commit()
+    do_commit(cursor)
 
 
 def delete_alias(cursor, name):
@@ -355,7 +355,7 @@ def delete_alias(cursor, name):
     _alias_id = alias_id(c, name)
     c.execute('delete from alias_tag where alias_id = ?', (_alias_id,))
     c.execute('delete from alias where id = ?', (_alias_id,))
-    c.connection.commit()
+    do_commit(cursor)
 
 
 def unknown_symbols(symbols, reverse=False):
@@ -461,7 +461,7 @@ def uncomma(tags):
     return re.split('[ ,]+', " ".join(tags))
 
 
-def main(arguments):
+def main(arguments, cursor=None):
     import re
     args = parse_args(arguments)
     c = args.command
@@ -471,7 +471,9 @@ def main(arguments):
     else:
         print('using default database', file=sys.stderr)
 
-    conn, cursor = db_connect(args.database)
+    if not cursor:
+        print ('making own cursor')
+        _, cursor = db_connect(args.database)
     init(cursor)
 
     if c in ('list', 'ls'):
@@ -510,11 +512,20 @@ def main(arguments):
         raise ValueError('Something weird happened,'
                          ' this line should never be reached.')
 
-    sys.exit(0)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    # testing commit isolation
+    import sqlite3
+    from .core import get_db_path
+    import tmsoup.util as u
+    u.defer_commit = True
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    main(sys.argv[1:], cursor=cursor)
+    # XXX adding an alias should not work, now -- it will not be committed,
+    # until I do conn.commit() here
+    conn.commit()
 
 __all__ = ('list_aliases', 'remove_alias', 'add_alias', 'rename_alias',
            'alias_away', 'copy_alias', 'check_aliases',)

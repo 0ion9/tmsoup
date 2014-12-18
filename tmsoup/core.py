@@ -4,10 +4,7 @@ from .file import (delete_file_taggings, file_info, file_id, file_ids,
                   file_mtime)
 from .tag import (create_tag, delete_tag, rename_tag, tag_names, tag_id,
                   id_tag_map, tag_id_map)
-from .util import (rename, delete, validate_name)
-
-_RESERVEDNAMES = set('. .. and or not eq ne lt gt le ge'.split(' '))
-_RESERVEDNAMES.update({v.upper() for v in _RESERVEDNAMES})
+from .util import (rename, delete, validate_name, do_commit)
 
 
 class KeyExists(Exception):
@@ -111,7 +108,7 @@ def tag_files(cursor, fids, taggings):
     print(all_values)
     cursor.execute('replace into file_tag(file_id, tag_id, value_id)'
         ' values %s' % all_values)
-    cursor.connection.commit()
+    do_commit(cursor)
 
 def untag_files(cursor, fids, taggings):
     """Remove tags from each of the specified files
@@ -137,7 +134,7 @@ def untag_files(cursor, fids, taggings):
     max_affected = len(fids) * len(taggings)
     # XXX this is not as well error-checked as TMSU's code
     # (storage/database/filetag.go:DeleteFileTag())
-    cursor.commit()
+    do_commit(cursor)
     total_affected = 0
     for params in taggings:
         cursor.execute('DELETE FROM file_tag'
@@ -149,7 +146,7 @@ def untag_files(cursor, fids, taggings):
                 ' by deletion' % (cursor.rowcount, max_affected))
         total_affected += cursor.rowcount
     cursor.execute('DROP TABLE fileidtmp')
-    cursor.connection.commit()
+    do_commit(cursor)
     return total_affected
 
 
@@ -165,7 +162,7 @@ def delete_file_tag(cursor, tag_id):
     """
     cursor.execute('DELETE FROM file_tag WHERE tag_id = ?')
     r = cursor.rowcount
-    cursor.commit()
+    do_commit(cursor)
     return r
 
 
