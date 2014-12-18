@@ -117,7 +117,7 @@ def read_args(file):
         if c:
             # newline immediately followed by newline?
             # end of this commandline.
-            if not (c == '\n' and text[-1] == '\n'):
+            if not (c == '\n' and (not text or text[-1] == '\n')):
                 text.append(c)
             else:
                 break
@@ -171,6 +171,22 @@ def parse_file(file):
     is a five-character string beginning with " and ending with ", not a
     three-character string beginning with f and ending with o.
 
+    The list of shared_arguments may be empty.
+    that looks like this:
+
+    --- file start ---
+
+    tag
+    mysong.mp3
+    metal
+
+    tag
+    --tags=apple banana orange iguana
+    mypicture.jpg
+    --- file end ---
+
+    (ie. just include a single blank line at start of file,
+    if you don't have any shared args.)
 
     """
     eof = False
@@ -180,7 +196,12 @@ def parse_file(file):
 
     while not eof:
         args, eof = read_args(file)
-        yield (shared_args, args)
+        # ignore empty commands (no args)
+        # this allows you to separate commands by as many blank lines
+        # as desired.
+        if args:
+            yield (shared_args, args)
+
 
 
 def add_shared_options(parser):
