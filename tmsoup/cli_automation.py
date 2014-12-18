@@ -17,23 +17,23 @@ _registry = {}
 
 def register(subcommands, cli_executor):
     """Register a CLI executor handling the specified subcommands.
-    
+
     Subcommands may be a string or a sequence.
-    
-    The executor must accept the keyword-args `subcommand_id` and 
+
+    The executor must accept the keyword-args `subcommand_id` and
     `cursor`. `cursor` should be used instead of making its own connection to
     the database.
-    
+
     Raises
     =======
     ValueError      when an existing registration for a given subcommand
                     already exists.
-    
+
     Notes
     ======
     Subcommand names are case-folded;
     eg. 'Untag' and 'UNTAG' are the same subcommand.
-    
+
     """
     if isinstance(subcommands, str):
         subcommands = [subcommands]
@@ -51,7 +51,7 @@ def register(subcommands, cli_executor):
 
 def unregister(subcommands, must_exist=True):
     """Remove existing registration of subcommand executor(s)
-    
+
     Raises
     =======
     KeyError        when the specified subcommand is not registered,
@@ -82,33 +82,45 @@ def automate(shared_args, args, cursor=None):
 
 def read_args(file):
     """Read a sequence of arguments from file.
-    
+
     Returns
     ========
     arguments       list of strings, one per line
     is_eof          True if there is no more data to parse
-    
+
     Argument sequences:
-      * should begin with a suitable argument to select a subcommand, like 
+      * should begin with a suitable argument to select a subcommand, like
         'untag'
       * separate arguments by newlines -- 'foo bar' is one argument.
         'foo
         bar' is two arguments.
-      * are terminated by \x00
-     
+      * are terminated by a blank line or EOF:
+        'foo
+        bar
+
+        baz
+        bam
+        '
+        Expresses two argument sequences, each containing two arguments.
+
     After calling read_args(), the file cursor will be either at the
     beginning of a new argument sequence, or at EOF.
-    
+
     This function is somewhat slow. It could be improved using array('u'),
     probably. It must not use seek(), in order to support reading from stdin.
     """
     text = []
     eof = False
-    while c not in ('','\x00'):
+    c = 'dummy'
+    while c:
         c = f.read(1)
         if c:
-            if c != '\x00':
+            # newline immediately followed by newline?
+            # end of this commandline.
+            if not (c == '\n' and text[-1] == '\n'):
                 text.append(c)
+            else:
+                break
         else: # EOF
             eof = True
             break
@@ -117,53 +129,55 @@ def read_args(file):
 
 def parse_file(file):
     """Parse a CLI automation file, yielding (shared_args, args) tuples
-    
+
     Examples
     =========
-    
+
     Format looks like:
-    
+
     shared_argument
     shared_argument[...]
     BLANK LINE
     argument
     argument[...]
     BLANK_LINE_OR_EOF
-    
-    An example might be (with BL in place of blank lines,
-    and EOF for EOF)
-    
+
+    An example might be (with EOF representing .. end of file)
+
     -D=/home/me/.my.db
-    BL
+
     tag
     mysong.mp3
     metal
-    BL
+
     tag
     --tags=apple banana orange iguana
     mypicture.jpg
-    BL
+
     stats
     EOF
-    
+
+
     Note that spaces and other 'shell characters' are not treated specially.
-    
+
     -D=/home/me/.my spaced out.db
-    
+
     is one argument.
-    
-    Similarly, 
-    
+
+    Similarly,
+
     "foo"
-    
-    is a five-character string beginning with " and ending with ", not a 
+
+    is a five-character string beginning with " and ending with ", not a
     three-character string beginning with f and ending with o.
-    
-    
+
+
     """
     eof = False
     shared_args, eof = read_args(file)
-    
+    if eof:
+        raise
+
     while not eof:
         args, eof = read_args(file)
         yield (shared_args, args)
@@ -174,27 +188,56 @@ def add_shared_options(parser):
                         help='Explain what is being done.')
     parser.add_argument('-D', '--database', default=None, type=str,
                         help='Use the specified database.')
-	parser.add_argument('-t','--single-transaction', default=False,
-	                    action='store_true',
+    parser.add_argument('-t','--single-transaction', default=False,
+                        action='store_true',
                         help='Wrap all actions in a single transaction.'
                         ' This can speed up actions that modify the database,'
                         ' like tagging or untagging.'
                         ' The entire set of actions must succeed for the'
                         ' modifications to be successfully committed')
-    
+
 
 def get_cursor(parsed_args):
-	from .core import get_db_path
-	parsed_args.database = get_db_path(parsed_args.database)
-	
+    from .core import get_db_path
+    parsed_args.database = get_db_path(parsed_args.database)
+
 
 def parse_shared_args(args):
-	parser = argparse.ArgumentParser('CLI Automation for tmsoup')
-	add_shared_options(parser)
-	return parser.parse_known_args(args)
+    parser = argparse.ArgumentParser('CLI Automation for tmsoup')
+    add_shared_options(parser)
+    return parser.parse_known_args(args)
 
 
 def automate_from_file(file, single_transaction=False):
     """Parse and dispatch a complete file"""
     for shared, args in parse_file(file):
         automate(shared, args)
+
+
+if __name__ == "__main__":
+    # simple testing of parsing.
+    import sys
+    from io import StringIO
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+        f = open(filename, 'r')
+    else:
+        f = StringIO("""two
+shared args
+
+a
+command
+with
+four args
+
+a
+shorter
+command
+
+spaces are okay, this is a one argument command
+
+this is
+the final command, eof follows.
+""")
+    for shared, args in parse_file(f):
+        print ('%r\t%r' % (shared, args))
