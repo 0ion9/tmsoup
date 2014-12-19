@@ -250,6 +250,7 @@ def changed_paths(cursor):
     deleted = []
     kind = []
     badmtime = []
+    linkres = []
 
     for dirname, filename, omtime, isdir in \
         cursor.execute('SELECT directory, name, mod_time,'
@@ -259,6 +260,7 @@ def changed_paths(cursor):
         if (i % 100) == 0:
             sys.stderr.write('%08d\r' % i)
         p = os.path.join(dirname, filename)
+        realp = os.path.realpath(p)
 
         if os.path.islink(p) and not os.path.exists(p):
             broken.append(p)
@@ -266,6 +268,8 @@ def changed_paths(cursor):
         elif not os.path.exists(p):
             deleted.append(p)
             continue
+        elif realp != p:
+            linkres.append(p)
 
         mtime = file_mtime(p)
 
@@ -288,7 +292,9 @@ def changed_paths(cursor):
             'broken': broken,
             'deleted': deleted,
             'type': kind,
-            'badmtime': badmtime}
+            'badmtime': badmtime,
+            'linkres': linkres}
+
 
 
 def update_file_metadata(cursor, paths):
@@ -538,7 +544,7 @@ def main(argv, cursor=None):
             if not os.path.exists(executable):
                 explode('Command {} not found'.format(executable))
 
-            _interactive_duplicate_removal(cursor(),
+            _interactive_duplicate_removal(cursor,
                 args.command,
                 args.limit,
                 args.minimum)
