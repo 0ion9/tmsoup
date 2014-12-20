@@ -73,5 +73,93 @@ def file_ids(cursor, paths):
     return {p: file_id(cursor, p) for p in paths}
 
 
+def rename_path(cursor, oldpath, newpath, update_only=False):
+    """Rename a path, updating the database to match.
+
+    If the specified path is a directory, then info for all files
+    contained in that directory branch will also be updated.
+
+    Parameters
+    ===========
+    update_only     Do not modify the filesystem, only the database.
+                    Useful when you need to fix the database to conform
+                    to a rename that's already happened.
+
+    Returns
+    ========
+    n               The number of `file` table rows affected.
+                    1 for renaming a file, 1+N for renaming a directory,
+                    where N is the number of tagged files/directories
+                    within that directory, recursively.
+                    (Note that N is specifically -not- the number of files
+                    /directories within that directory; only the ones that
+                    are currently tagged.)
+
+    Raises
+    =======
+    KeyError        If there is no record of this path in the database.
+    OSError         If the database records that the given path is a directory
+                    but the OS says it is not, or vice versa.
+    OSError         If the destination path doesn't exist (eg.
+                    you are trying to rename /foo/bar.png to /foo/baz/bar.png,
+                    but /foo/baz doesn't exist.)
+    FileNotFoundError   If oldpath doesn't exist on disk, and you haven't
+                        specified update_only=True.
+
+
+    """
+    if (not update_only) and (not os.path.exists(oldpath)):
+        raise FileNotFoundError(oldpath)
+
+    isdir = os.path.isdir(oldpath)
+    db_isdir = cursor.execute('SELECT is_dir FROM file'
+                              ' WHERE directory = ? AND name = ?',
+                              file_info(oldpath)).fetchone()
+    if db_isdir:
+        db_isdir = db_isdir[0]
+    else:
+        db_isdir = isdir
+
+    if isdir != db_isdir:
+        raise OSError('OS reports isdir=%r,'
+                      ' but database reports isdir=%r' % (isdir, db_isdir))
+
+    if isdir:
+        #XXX
+        pass
+    else:
+        id = cursor.execute('SELECT id FROM file'
+                            ' WHERE directory=? AND name = ?',
+                            file_info(oldpath)).fetchone()
+        if not id:
+            raise KeyError('No record referring to %r found.' % (oldpath,))
+        id = id[0]
+        if not update_only:
+            newdir = os.path.dirname(newpath)
+            if not os.path.exists(newpath)
+                raise OSError('Attempt to move {} into a nonexistent'
+                              ' directory {}'.format(oldpath, newdir))
+            os.rename(oldpath, newpath)
+        cursor.execute('UPDATE file SET directory=?, name=? WHERE id=?',
+                       file_info(newpath) + (id,))
+        do_commit()
+
+
+def move_paths(cursor, paths, destdir):
+    """Move all `paths` to destdir, updating database accordingly.
+
+    Files that are not currently tagged will just be moved, with no updates to
+    the database.
+
+    Raises
+    =======
+    ValueError      If a path points to a directory, but other paths point at
+                    files inside that directory.
+                    move_files() does not do recursive moves,
+                    use rename_path() on the parent directory for that.
+
+    """
+    raise NotImplementedError('tmsoup.file.move_paths()')
+
 __all__ = ('delete_file_taggings', 'file_id', 'file_ids', 'file_mtime',
            'file_info')
