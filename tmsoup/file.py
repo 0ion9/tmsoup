@@ -73,6 +73,29 @@ def file_ids(cursor, paths):
     return {p: file_id(cursor, p) for p in paths}
 
 
+def dir_contains(path, querypath):
+    """Given two paths, return whether querypath is inside path.
+
+    This does not check whether either path exists on disk, it is
+    purely a logical operation.
+
+    Examples
+    =========
+
+    >>> dir_contains('/foo/bar', '/foo/bar/1/2/3/4')
+    True
+
+    >>> dir_contains('/foo/bar', '/foo/ba')
+    False
+
+    >>> dir_contains('/foo/bar', '/foo/bar')
+    False
+    """
+    slashed = os.path.abspath(path) + os.path.sep
+    querypath = os.path.abspath(querypath)
+    return querypath.startswith(slashed)
+
+
 def rename_path(cursor, oldpath, newpath, update_only=False):
     """Rename a path, updating the database to match.
 
@@ -111,6 +134,8 @@ def rename_path(cursor, oldpath, newpath, update_only=False):
     if (not update_only) and (not os.path.exists(oldpath)):
         raise FileNotFoundError(oldpath)
 
+    oldpath = os.path.abspath(oldpath)
+    newpath = os.path.abspath(newpath)
     isdir = os.path.isdir(oldpath)
     db_isdir = cursor.execute('SELECT is_dir FROM file'
                               ' WHERE directory = ? AND name = ?',
@@ -125,9 +150,44 @@ def rename_path(cursor, oldpath, newpath, update_only=False):
                       ' but database reports isdir=%r' % (isdir, db_isdir))
 
     if isdir:
-        #XXX
-        pass
+        if not os.path.exists(os.path.dirname(newpath)):
+            raise OSError('Attempt to move {} into a nonexistent'
+                          ' directory {} with name {}'.format(
+                              oldpath,
+                              os.path.dirname(newpath),
+                              os.path.basename(newpath)))
+        id = cursor.execute('SELECT id FROM file'
+                            ' WHERE directory=? AND name = ?',
+                            file_info(oldpath)).fetchone()
+        if id:
+            id = id[0]
+        pattern = oldpath + os.path.sep + '%'
+        idmap = {}
+        for id, directory in cursor.execute('SELECT id, directory FROM file'
+                                            ' WHERE directory=?'
+                                            ' OR directory like ?',
+                                            (oldpath, pattern)):
+
+            if dir_contains(oldpath, directory):
+                tmp = directory.split(oldpath, 1)
+                if len(tmp) != 2:
+                    raise ValueError('Attempted to split %r by %r,'
+                                     ' but got %r!' % (directory,
+                                                       oldpath,
+                                                       tmp))
+                tmp[0] = newpath
+                rewritten = "".join(tmp)
+                import sys
+                print ('%r -> %r' % (directory, rewritten), file=sys.stderr)
+                idmap[id] = (directory, rewritten)
+            elif directory == oldpath:
+                idmap[id] = (oldpath, newpath)
+        print ('idmap: %r' % (idmap,))
+        # XXX actually make changes.
     else:
+        import sys
+        sys.exit(1)
+        # blocked off for now.
         id = cursor.execute('SELECT id FROM file'
                             ' WHERE directory=? AND name = ?',
                             file_info(oldpath)).fetchone()
@@ -136,7 +196,7 @@ def rename_path(cursor, oldpath, newpath, update_only=False):
         id = id[0]
         if not update_only:
             newdir = os.path.dirname(newpath)
-            if not os.path.exists(newpath)
+            if not os.path.exists(newpath):
                 raise OSError('Attempt to move {} into a nonexistent'
                               ' directory {}'.format(oldpath, newdir))
             os.rename(oldpath, newpath)
@@ -161,5 +221,30 @@ def move_paths(cursor, paths, destdir):
     """
     raise NotImplementedError('tmsoup.file.move_paths()')
 
+def parse_args(args):
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='Rename or get info about files/directories')
+    subp = parser.add_subparsers(dest='cmd')
+    subp.required = True
+    rename = subp.add_parser('rename',
+                             help='Rename a file or directory')
+    rename.add_argument('oldname')
+    rename.add_argument('newname')
+    return parser.parse_args(args)
+
+def main(argv):
+    import sqlite3
+    from tmsoup.core import get_db_path
+    args = parse_args(argv)
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    if not os.path.isdir(args.oldname):
+        raise ValueError('directories only, for now.')
+    rename_path(cursor, args.oldname, args.newname)
+
 __all__ = ('delete_file_taggings', 'file_id', 'file_ids', 'file_mtime',
            'file_info')
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])
