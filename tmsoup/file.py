@@ -102,6 +102,9 @@ def rename_path(cursor, oldpath, newpath, update_only=False):
     If the specified path is a directory, then info for all files
     contained in that directory branch will also be updated.
 
+    This is equivalent to
+    `mv "$OLDPATH" "$NEWPATH"; tmsu repair --manual "$OLDPATH" "$NEWPATH"`.
+
     Parameters
     ===========
     update_only     Do not modify the filesystem, only the database.
@@ -136,7 +139,7 @@ def rename_path(cursor, oldpath, newpath, update_only=False):
 
     oldpath = os.path.abspath(oldpath)
     newpath = os.path.abspath(newpath)
-    isdir = os.path.isdir(oldpath)
+    isdir = os.path.isdir(oldpath) or os.path.isdir(os.path.realpath(oldpath))
     db_isdir = cursor.execute('SELECT is_dir FROM file'
                               ' WHERE directory = ? AND name = ?',
                               file_info(oldpath)).fetchone()
