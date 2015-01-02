@@ -40,16 +40,59 @@ def dispatch_hook(role, *args, **kwargs):
         callback(*args, **kwargs)
 
 
-def get_db_path(path=None):
+def get_db_path(path=None, basedir=None):
     """Make a best guess at correct db path,
-    given a nominal path (which can be None).
+    given a nominal path (which can be None), and an optional basedir.
 
-    Selects the path itself,
+    If path is not None, simply returns path.
+
+    If path is None, basedir and its parents are searched
+    for .tmsu/db files, in the same manner as git -- deepest-first.
+
+    If no .tmsu/db files are found
+    either the content of the TMSU_DB environment variable,
+    or if that is unset, ~/.tmsu/default.db, is returned.
+
+    Parameters
+    ===========
+    path        None or str
+                Path to database
+    basedir     None or str
+                Base directory.
+                If None, CWD is used.
+                    When
+
+    Notes
+    ======
+    For interactive use, set `basedir` thoughtfully. If your program (eg file browser)
+    has a 'current directory', this is what you should pass as `basedir`.
+    If it does not, but operates on one or more files, pass
+    the os.path.dirname() of the first of those files as `basedir`.
+    This includes use in CLI utilities.
+
+    (see https://github.com/oniony/TMSU/issues/15)
+
+
+
     the contents of TMSU_DB environment variable,
     or ~/.tmsu/default.db, in that order.
     """
-    return path or os.getenv('TMSU_DB',
-                             os.path.expanduser('~/.tmsu/default.db'))
+    if path:
+        return path
+    else:
+        if not basedir:
+            basedir = os.getcwd()
+        path = os.path.abspath(basedir)
+        parts = path.split(os.path.sep)
+        candidate = os.path.sep + os.path.join(*(parts + ['.tmsu/db']))
+        if os.path.isfile(candidate):
+            return candidate
+        for i in range(-1, -(len(parts) - 1), -1):
+            candidate = os.path.sep + os.path.join(*(parts[:i] + ['.tmsu/db']))
+            if os.path.isfile(candidate):
+                return candidate
+        return os.getenv('TMSU_DB',
+                         os.path.expanduser('~/.tmsu/default.db'))
 
 
 def tag_values(cursor):
