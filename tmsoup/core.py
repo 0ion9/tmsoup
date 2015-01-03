@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from functools import partial
 from .file import (delete_file_taggings, file_info, file_id, file_ids,
                   file_mtime)
@@ -93,6 +94,86 @@ def get_db_path(path=None, basedir=None):
                 return candidate
         return os.getenv('TMSU_DB',
                          os.path.expanduser('~/.tmsu/default.db'))
+
+
+def relpath(database):
+    """Return the path to relativize paths to for the given database path,
+    or None if the final two path elements are not .tmsu/db"""
+    path = os.path.abspath(database)
+    if path == '.tmsu'+ os.path.sep + 'db' or path.endswith(os.path.sep + '.tmsu' + os.path.sep + 'db'):
+        tmp = (os.path.sep.join(path.split(os.path.sep)[:-2]))
+        if not tmp.startswith(os.path.sep):
+            tmp = os.path.sep + tmp
+        return tmp
+    return None
+
+
+def connect(database, *args, **kwargs):
+    "Connect to database, initializing it if it doesn't exist."
+    class TMSUConnection(sqlite3.Connection):
+        _relpath = relpath(database)
+        def normalize_path(self, p):
+            if self._relpath:
+                return os.path.relpath(p, self._relpath)
+            else:
+                return os.path.abspath(p)
+
+    exists = os.path.exists(database)
+    conn = sqlite3.connect(database, *args, factory=TMSUConnection, **kwargs)
+    if not exists:
+        conn.cursor().executescript("""
+CREATE TABLE tag (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+CREATE INDEX idx_tag_name
+           ON tag(name);
+CREATE TABLE file (
+                id INTEGER PRIMARY KEY,
+                directory TEXT NOT NULL,
+                name TEXT NOT NULL,
+                fingerprint TEXT NOT NULL,
+                mod_time DATETIME NOT NULL,
+                size INTEGER NOT NULL,
+                is_dir BOOLEAN NOT NULL,
+                CONSTRAINT con_file_path UNIQUE (directory, name)
+            );
+CREATE INDEX idx_file_fingerprint
+           ON file(fingerprint);
+CREATE TABLE value (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                CONSTRAINT con_value_name UNIQUE (name)
+            );
+CREATE TABLE file_tag (
+                file_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                value_id INTEGER NOT NULL,
+                PRIMARY KEY (file_id, tag_id, value_id),
+                FOREIGN KEY (file_id) REFERENCES file(id),
+                FOREIGN KEY (tag_id) REFERENCES tag(id)
+                FOREIGN KEY (value_id) REFERENCES value(id)
+            );
+CREATE INDEX idx_file_tag_file_id
+           ON file_tag(file_id);
+CREATE INDEX idx_file_tag_tag_id
+           ON file_tag(tag_id);
+CREATE INDEX idx_file_tag_value_id
+           ON file_tag(value_id);
+CREATE TABLE implication (
+                tag_id INTEGER NOT NULL,
+                implied_tag_id INTEGER NOT NULL,
+                PRIMARY KEY (tag_id, implied_tag_id)
+            );
+CREATE TABLE query (
+                text TEXT PRIMARY KEY
+            );
+CREATE TABLE setting (
+                name TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+""")
+    return conn
 
 
 def tag_values(cursor):
