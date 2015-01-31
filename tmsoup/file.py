@@ -57,7 +57,15 @@ def file_id(cursor, path):
 
     If the path is not yet tagged, return None.
     """
-    dirname, filename = file_info(path)
+    if hasattr(cursor.connection, 'normalize_path'):
+        print('normalizing %r' % path)
+        print('relpath = %r' % cursor.connection._relpath)
+        np = cursor.connection.normalize_path(path)
+        print('normpath = %r' % np)
+        dirname, filename = os.path.split(np)
+        print('->%r %r' % (dirname, filename))
+    else:
+        dirname, filename = file_info(path)
     results = list(cursor.execute('SELECT id FROM file'
                   ' WHERE directory=? AND name=?', (dirname, filename)))
     if len(results) > 1:

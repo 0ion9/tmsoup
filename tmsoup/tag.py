@@ -17,10 +17,22 @@ def id_tag_map(cursor):
     return {v: k for k, v in tag_id_map(cursor).items()}
 
 
+def tag_name(cursor, id):
+    "Return the name of the ided tag"
+    try:
+        return cursor.execute('SELECT name FROM tag'
+                              ' WHERE id = ?', (id,)).fetchone()[0]
+    except TypeError:
+        raise KeyError(id)
+
 def tag_id(cursor, name):
     "Return the id of the named tag"
-    return cursor.execute('SELECT id FROM tag'
-                          ' WHERE name = ?', (name,)).fetchone()[0]
+    try:
+        return cursor.execute('SELECT id FROM tag'
+                              ' WHERE name = ?', (name,)).fetchone()[0]
+    except TypeError:
+        print('tag %r not found' % name)
+        raise KeyError(name)
 
 def tag_exists(cursor, name=None, id=None):
     "Check for a tag's existence, either by name or id"

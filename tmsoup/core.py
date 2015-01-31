@@ -114,7 +114,12 @@ def connect(database, *args, **kwargs):
         _relpath = relpath(database)
         def normalize_path(self, p):
             if self._relpath:
-                return os.path.relpath(p, self._relpath)
+                # this is the flying fuckup:
+                print ('cwd is %r' % os.getcwd())
+                p2 = os.path.abspath(p)
+                # ^^^
+                print ('relpath %r %r : %r -> %r' % (p, p2, self._relpath, os.path.relpath(p2, self._relpath)))
+                return os.path.relpath(p2, self._relpath)
             else:
                 return os.path.abspath(p)
 

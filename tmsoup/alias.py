@@ -5,7 +5,7 @@
 import os
 import sys
 import argparse
-from .core import (get_db_path, validate_name,
+from .core import (get_db_path, validate_name, connect,
                    tag_names, rename_tag,
                    KeyExists, tag_id, register_hook, resolve_tag_value)
 from .util import do_commit
@@ -44,7 +44,7 @@ def init(cursor):
 
 def db_connect(path=None):
     import sqlite3
-    conn = sqlite3.connect(path or _DB_PATH)
+    conn = connect(path or _DB_PATH)
     return conn, conn.cursor()
 
 
@@ -119,6 +119,16 @@ def describe_aliases(cursor):
         desc[name] = (id, set(results))
 
     return desc
+
+def aliases_referencing(cursor, tagname):
+    """Returns the names of all aliases referencing the specified tag id,
+    and the list of referenced tag ids"""
+    try:
+        return {k:v[1] for k,v in describe_aliases(cursor).items() if tagname in v[1]}
+    except TypeError:
+        print (v, v2)
+        raise
+
 
 
 def list_aliases(cursor, alias_filter=None, tag_filter=None, oneline=False):
@@ -517,15 +527,21 @@ def main(arguments, cursor=None):
 if __name__ == "__main__":
     # testing commit isolation
     import sqlite3
-    from .core import get_db_path
+#    from .core import get_db_path, connect
     import tmsoup.util as u
-    u.defer_commit = True
-    conn = sqlite3.connect(get_db_path())
-    cursor = conn.cursor()
-    main(sys.argv[1:], cursor=cursor)
+#    u.defer_commit = True
+#    path = os.path.realpath(get_db_path())
+#    print (path)
+#    conn = connect(path)
+#    cursor = conn.cursor()
+    try:
+#        main(sys.argv[1:], cursor=cursor)
+         main(sys.argv[1:])
+    except KeyError:
+        print("%r tags found" % tag_names(cursor))
     # XXX adding an alias should not work, now -- it will not be committed,
     # until I do conn.commit() here
-    conn.commit()
+#   conn.commit()
 
 __all__ = ('list_aliases', 'remove_alias', 'add_alias', 'rename_alias',
            'alias_away', 'copy_alias', 'check_aliases',)
