@@ -8,9 +8,10 @@ This schema is designed mainly so that links to TMSU queries become possible. Pe
 to be able to do this in Zim. Using the schema-handler machinery, not only is this possible, but it automatically works
 in all programs which support linking to URIs.
 
-example
-[tmsu://q/music+metal](tmsu://q/music+metal) or [tmsu://q/music metal](tmsu://q/music metal) -- play some metal.
-[tmsu://q/outgoing?in=doc&cmd=browser](tmsu://q/outgoing?in=doc&cmd=browser) -- show a list of all outgoing documents, in your browser.
+examples:
+
+* [tmsu://q/music+metal](tmsu://q/music+metal) or [tmsu://q/music metal](tmsu://q/music metal) -- play some metal.
+* [tmsu://q/outgoing?in=doc&cmd=browser](tmsu://q/outgoing?in=doc&cmd=browser) -- show a list of all outgoing documents, in your browser.
 
 
 Why not VFS?
@@ -52,6 +53,15 @@ There are no currently known bugs.
 
 Querying for tag values in short form, eg tmsu://q/foo=bar , can look odd when
 you also have options in the URI, though -- tmsu://q/foo=bar?in=doc&cmd=browser
+
+
+Support
+----------
+
+Some systems explicitly strip links with unknown URI-schemas.
+Currently known systems that do not support custom URI-schemas:
+
+* Github markdown renderer (that's why the links in this document aren't clickable)
 
 
 Plans
