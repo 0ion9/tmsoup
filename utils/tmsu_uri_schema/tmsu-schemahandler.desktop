@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Exec=/home/kau/bin/tmsu-schemahandler.sh %u
+StartupNotify=false
+Terminal=false
+Categories=Utility
+MimeType=x-scheme-handler/tmsu;
+Name=TMSU query viewer/etc launcher
+Comment=View the output of 'tmsu files $QUERY', or similar
+Hidden=false
+NoDisplay=false
+Icon=giggle-tag
+Name[en_AU]=TMSU query viewer/etc launcher
+Comment[en_AU]=View the output of 'tmsu files $QUERY', or similar
