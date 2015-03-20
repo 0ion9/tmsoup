@@ -73,10 +73,6 @@ def get_db_path(path=None, basedir=None):
 
     (see https://github.com/oniony/TMSU/issues/15)
 
-
-
-    the contents of TMSU_DB environment variable,
-    or ~/.tmsu/default.db, in that order.
     """
     if path:
         return path
