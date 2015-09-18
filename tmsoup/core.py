@@ -304,5 +304,5 @@ __all__ = ('validate_name', 'get_db_path', 'tag_names', 'tag_values',
            'tag_id_map', 'id_tag_map', 'rename_tag', 'delete_tag',
            'register_hook', 'dispatch_hook', 'KeyExists', 'file_id',
            'file_ids', 'file_tags', 'tag_files', 'untag_files',
-           'delete_file_tag',
+           'delete_file_tag', 'connect',
            'delete_file_taggings', 'splitpath', 'resolve_tag_value')
