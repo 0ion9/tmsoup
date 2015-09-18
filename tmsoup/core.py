@@ -233,10 +233,19 @@ def file_tags(cursor, paths):
 
     """
     # XXX could be faster -- query all paths in one go
-    id_path_map = {file_id(cursor, p): p for p in paths}
+    id_path_map = {}
     map = {}
+    for p in paths:
+        _id = file_id(cursor, p)
+        if _id is not None:
+            id_path_map[_id] = p
+        else:
+            # Not known to TMSU yet
+            map[p] = []
     cursor.execute('CREATE TEMPORARY TABLE fileidtmp(id INTEGER)')
     idlist = sorted(id_path_map.keys())
+    import sys
+    sys.stderr.write('id_path_map is %r\n' % (id_path_map,) )
 
     for start in range(0, len(idlist) + 1, 499):
         tmp = idlist[start:start+499]
