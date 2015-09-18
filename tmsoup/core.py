@@ -1,4 +1,5 @@
 import os
+import sys
 import sqlite3
 from functools import partial
 from .file import (delete_file_taggings, file_info, file_id, file_ids,
@@ -41,6 +42,15 @@ def dispatch_hook(role, *args, **kwargs):
         callback(*args, **kwargs)
 
 
+def _abspath(path):
+    # return os.path.abspath(path) prefixed by an additional os.path.sep
+    # -- indicating a database where paths are absolute rather than relative.
+    #
+    # XXX does this return something sane on Mac?
+    tmp = os.path.sep + os.path.abspath(path)
+    return tmp
+
+
 def get_db_path(path=None, basedir=None):
     """Make a best guess at correct db path,
     given a nominal path (which can be None), and an optional basedir.
@@ -76,8 +86,7 @@ def get_db_path(path=None, basedir=None):
 
     """
     if path:
-        absolute = True
-        return path
+        return _abspath(path)
     else:
         if not basedir:
             basedir = os.getcwd()
@@ -85,7 +94,6 @@ def get_db_path(path=None, basedir=None):
                 raise FileNotFoundError('cwd %r no longer exists!' % basedir)
         path = os.path.abspath(basedir)
         parts = path.split(os.path.sep)
-        absolute = False
         candidate = os.path.sep + os.path.join(*(parts + ['.tmsu/db']))
         if os.path.isfile(candidate):
             return candidate
@@ -95,9 +103,8 @@ def get_db_path(path=None, basedir=None):
                 return candidate
         lasttry = os.getenv('TMSU_DB', None)
         if not lasttry:
-            absolute = True
-            return os.path.expanduser('~/.tmsu/default.db')
-        return lasttry
+            lasttry = os.path.expanduser('~/.tmsu/default.db')
+        return _abspath(lasttry)
 
 
 
@@ -110,11 +117,11 @@ def get_db_path(path=None, basedir=None):
 #        THIS third case is currently not handled correctly, because we don't have an API
 #        that can fully distinguish between an implicit path and explicit path.
 #
-def relpath(database, explicit=False):
+def relpath(database):
     """Return the path to relativize paths to for the given database path,
     or None if the final two path elements are not .tmsu/db"""
     path = os.path.abspath(database)
-    if explicit:
+    if path.startswith(os.path.sep * 2):
         return None
     if path == '.tmsu'+ os.path.sep + 'db' or path.endswith(os.path.sep + '.tmsu' + os.path.sep + 'db'):
         tmp = (os.path.sep.join(path.split(os.path.sep)[:-2]))
@@ -244,8 +251,7 @@ def file_tags(cursor, paths):
             map[p] = []
     cursor.execute('CREATE TEMPORARY TABLE fileidtmp(id INTEGER)')
     idlist = sorted(id_path_map.keys())
-    import sys
-    sys.stderr.write('id_path_map is %r\n' % (id_path_map,) )
+    sys.stderr.write('id_path_map is %r\n' % (id_path_map,))
 
     for start in range(0, len(idlist) + 1, 499):
         tmp = idlist[start:start+499]
@@ -272,7 +278,7 @@ def tag_files(cursor, fids, taggings):
     for fid in fids:
         all_values.extend((fid, tid, vid) for tid, vid in taggings)
     all_values = ",".join("(%d,%d,%d)" % v for v in all_values)
-    print(all_values)
+    sys.stderr.write('%r\n' % all_values)
     cursor.execute('replace into file_tag(file_id, tag_id, value_id)'
         ' values %s' % all_values)
     do_commit(cursor)
