@@ -61,7 +61,8 @@ def get_db_path(path=None, basedir=None):
     basedir     None or str
                 Base directory.
                 If None, CWD is used.
-                    When
+                When the CWD is also invalid (doesn't exist),
+                FileNotFoundError is raised.
 
     Notes
     ======
@@ -75,12 +76,16 @@ def get_db_path(path=None, basedir=None):
 
     """
     if path:
+        absolute = True
         return path
     else:
         if not basedir:
             basedir = os.getcwd()
+            if not os.path.exists(basedir):
+                raise FileNotFoundError('cwd %r no longer exists!' % basedir)
         path = os.path.abspath(basedir)
         parts = path.split(os.path.sep)
+        absolute = False
         candidate = os.path.sep + os.path.join(*(parts + ['.tmsu/db']))
         if os.path.isfile(candidate):
             return candidate
@@ -88,14 +93,29 @@ def get_db_path(path=None, basedir=None):
             candidate = os.path.sep + os.path.join(*(parts[:i] + ['.tmsu/db']))
             if os.path.isfile(candidate):
                 return candidate
-        return os.getenv('TMSU_DB',
-                         os.path.expanduser('~/.tmsu/default.db'))
+        lasttry = os.getenv('TMSU_DB', None)
+        if not lasttry:
+            absolute = True
+            return os.path.expanduser('~/.tmsu/default.db')
+        return lasttry
 
 
-def relpath(database):
+
+# XXX this actually doesn't match TMSU's behaviour.
+# TMSU's behaviour is:
+#   * if there isn't a local db, use default DB with absolute paths
+#   * if there is a local db, use it with appropriate relpath
+#   * if the path is explicitly set via TMSU_DB or --database, use it
+#     with absolute paths.
+#        THIS third case is currently not handled correctly, because we don't have an API
+#        that can fully distinguish between an implicit path and explicit path.
+#
+def relpath(database, explicit=False):
     """Return the path to relativize paths to for the given database path,
     or None if the final two path elements are not .tmsu/db"""
     path = os.path.abspath(database)
+    if explicit:
+        return None
     if path == '.tmsu'+ os.path.sep + 'db' or path.endswith(os.path.sep + '.tmsu' + os.path.sep + 'db'):
         tmp = (os.path.sep.join(path.split(os.path.sep)[:-2]))
         if not tmp.startswith(os.path.sep):
@@ -105,16 +125,29 @@ def relpath(database):
 
 
 def connect(database, *args, **kwargs):
-    "Connect to database, initializing it if it doesn't exist."
+    """Connect to database, initializing it if it doesn't exist.
+
+    The custom Connection instance returned provides the following
+    additional members:
+
+        normalize_path(path) :
+                   Normalize a path to suit the relative path of this database.
+                   Note that databases not classified as 'local'
+                   (see https://github.com/oniony/TMSU/wiki/Switching-Databases)
+                   store absolute paths; normalize_path() will return an
+                   absolute path for such databases.
+
+        _relpath : cached value of relpath(database).
+                   Used in path normalization
+
+    Memory-only databases (database - ':memory:') are currently not supported.
+
+    """
     class TMSUConnection(sqlite3.Connection):
         _relpath = relpath(database)
         def normalize_path(self, p):
             if self._relpath:
-                # this is the flying fuckup:
-                print ('cwd is %r' % os.getcwd())
                 p2 = os.path.abspath(p)
-                # ^^^
-                print ('relpath %r %r : %r -> %r' % (p, p2, self._relpath, os.path.relpath(p2, self._relpath)))
                 return os.path.relpath(p2, self._relpath)
             else:
                 return os.path.abspath(p)
