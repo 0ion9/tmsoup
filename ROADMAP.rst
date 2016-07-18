@@ -1,13 +1,14 @@
 * There are other parts that aren't ready for public consumption yet,
-that implement tag grouping, tag suggestion/correlation, and docstrings
-for tags. All of these are fairly experimental (as is aliasing) and are
-mostly intended to assist tag completion /GUIs. I'm currently considering
-whether to expand docstring support to encompass tag groups as well.
+  that implement tag grouping, tag suggestion/correlation, and docstrings
+  for tags. All of these are fairly experimental (as is aliasing) and are
+  mostly intended to assist tag completion /GUIs. I'm currently considering
+  whether to expand docstring support to encompass tag groups as well.
 
 * My existing 'tag' tagging gui will probably also go in, hopefully with
-shelling-out to tmsu reduced to a minimum.
+  shelling-out to tmsu reduced to a minimum.
 
 * Other tmsu-related tools and affordances, like:
+
   * sxiv keyhandler snippets related to tagging (repeat last tagging, tagging 'quickslots', etc)
   * Thunar custom action for tagging
   * (yet to be written) Thunar select-by-tag-query plugin (eg files with specific tag, files with >N tags ..).

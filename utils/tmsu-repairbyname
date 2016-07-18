@@ -1,0 +1,36 @@
+#!/bin/bash
+# Simple repair of tmsu database by filename:
+#  * Ask TMSU to list missing paths (`tmsu repair`)
+#  * For each path, look for paths with exact same basename, searching recursively within current directory
+#   * if there was exactly one match, use `tmsu repair --manual` to repair it.
+#    * if the new path of the file is already tagged, this will fail. In that case we use 
+#      `tmsu-fs-merge` to merge the original path's tags onto the current path.
+#   * if there were 0, or more than 1 matches, report them, but do not attempt to repair
+#
+IFS=$'\n'
+missing=($(tmsu repair | egrep ': missing$' | sed 's/: missing$//g'))
+ERRLOG=/tmp/tmsu-repairror.$$
+unset IFS
+for V in "${missing[@]}"; do
+  base=$(basename "$V")
+  IFS=$'\n'
+  cand=($(find -name "$base" -printf "%P\n"))
+  unset IFS
+  if [ "${#cand[@]}" -eq 1 ]; then   
+    #echo "$V -> ${cand[0]}"
+    tmsu repair --manual "$V" "${cand[0]}" 2>$ERRLOG
+    if [ "$?" -ne 0 ]; then
+      # This happens if the file in its new location is already tagged.
+      if fgrep 'UNIQUE constraint failed: file.directory, file.name' $ERRLOG; then
+        tmsu-fs-merge "$V" "${cand[0]}" 2>/dev/null
+      else
+        echo "Unknown error during repair; record NOT repaired. TMSU output was:"
+        cat $ERRLOG
+      fi
+    fi
+  else
+    echo "${#cand[@]} matches for $V :" "${cand[@]}"
+  fi
+done
+
+rm -f $ERRLOG
